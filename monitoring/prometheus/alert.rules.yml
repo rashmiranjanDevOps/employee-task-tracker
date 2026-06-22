@@ -1,0 +1,170 @@
+groups:
+  # ─── Application Alerts ───────────────────────────────────────────────────
+  - name: task-tracker-application
+    interval: 30s
+    rules:
+      - alert: HighErrorRate
+        expr: |
+          rate(task_tracker_http_requests_total{status_code=~"5.."}[5m]) /
+          rate(task_tracker_http_requests_total[5m]) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+          team: backend
+        annotations:
+          summary: "High HTTP error rate on Task Tracker API"
+          description: "Error rate is {{ $value | humanizePercentage }} over last 5 minutes. Threshold: 5%."
+          runbook: "https://wiki.rashmidevops.xyz/runbooks/high-error-rate"
+
+      - alert: SlowAPIResponse
+        expr: |
+          histogram_quantile(0.99,
+            rate(task_tracker_http_request_duration_seconds_bucket[5m])
+          ) > 2
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "Slow API response (p99 > 2s)"
+          description: "p99 latency is {{ $value | humanizeDuration }}."
+
+      - alert: APIDown
+        expr: up{job="task-tracker-backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: sre
+        annotations:
+          summary: "Task Tracker API is DOWN"
+          description: "Backend has been unreachable for more than 1 minute."
+
+  # ─── Infrastructure Alerts ────────────────────────────────────────────────
+  - name: task-tracker-infrastructure
+    interval: 30s
+    rules:
+      - alert: HighCPUUsage
+        expr: |
+          100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 85
+        for: 5m
+        labels:
+          severity: warning
+          team: sre
+        annotations:
+          summary: "High CPU usage on {{ $labels.instance }}"
+          description: "CPU usage is {{ $value | humanize }}% for 5+ minutes."
+
+      - alert: HighMemoryUsage
+        expr: |
+          (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) /
+          node_memory_MemTotal_bytes * 100 > 90
+        for: 5m
+        labels:
+          severity: critical
+          team: sre
+        annotations:
+          summary: "High memory usage on {{ $labels.instance }}"
+          description: "Memory usage is {{ $value | humanize }}%."
+
+      - alert: DiskSpaceLow
+        expr: |
+          (node_filesystem_avail_bytes{mountpoint="/"} /
+          node_filesystem_size_bytes{mountpoint="/"}) * 100 < 10
+        for: 5m
+        labels:
+          severity: critical
+          team: sre
+        annotations:
+          summary: "Low disk space on {{ $labels.instance }}"
+          description: "Only {{ $value | humanize }}% disk space remaining."
+
+  # ─── Kubernetes Alerts ────────────────────────────────────────────────────
+  - name: task-tracker-kubernetes
+    interval: 30s
+    rules:
+      - alert: PodCrashLooping
+        expr: |
+          rate(kube_pod_container_status_restarts_total{
+            namespace=~"task-tracker.*"
+          }[15m]) * 60 * 15 > 3
+        for: 5m
+        labels:
+          severity: critical
+          team: sre
+        annotations:
+          summary: "Pod {{ $labels.pod }} is CrashLooping"
+          description: "{{ $labels.pod }} in {{ $labels.namespace }} restarted {{ $value }} times in 15 minutes."
+
+      - alert: PodNotReady
+        expr: |
+          kube_pod_status_ready{
+            namespace=~"task-tracker.*",
+            condition="true"
+          } == 0
+        for: 5m
+        labels:
+          severity: warning
+          team: sre
+        annotations:
+          summary: "Pod {{ $labels.pod }} is not ready"
+          description: "Pod {{ $labels.pod }} in {{ $labels.namespace }} has been not ready for 5 minutes."
+
+      - alert: DeploymentReplicasMismatch
+        expr: |
+          kube_deployment_spec_replicas{namespace=~"task-tracker.*"} !=
+          kube_deployment_status_available_replicas{namespace=~"task-tracker.*"}
+        for: 10m
+        labels:
+          severity: warning
+          team: sre
+        annotations:
+          summary: "Deployment {{ $labels.deployment }} replica mismatch"
+          description: "Expected {{ $value }} replicas but fewer available."
+
+      - alert: HPAMaxReplicas
+        expr: |
+          kube_horizontalpodautoscaler_status_current_replicas{namespace=~"task-tracker.*"} ==
+          kube_horizontalpodautoscaler_spec_max_replicas{namespace=~"task-tracker.*"}
+        for: 15m
+        labels:
+          severity: warning
+          team: sre
+        annotations:
+          summary: "HPA {{ $labels.horizontalpodautoscaler }} at max replicas"
+          description: "Consider increasing max replicas or investigating the load spike."
+
+  # ─── Database Alerts ──────────────────────────────────────────────────────
+  - name: task-tracker-database
+    interval: 30s
+    rules:
+      - alert: MySQLDown
+        expr: mysql_up == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: dba
+        annotations:
+          summary: "MySQL is DOWN"
+          description: "MySQL instance {{ $labels.instance }} has been down for 1+ minute."
+
+      - alert: MySQLHighConnections
+        expr: |
+          mysql_global_status_threads_connected /
+          mysql_global_variables_max_connections * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+          team: dba
+        annotations:
+          summary: "MySQL connections above 80%"
+          description: "{{ $value | humanize }}% of max connections used."
+
+      - alert: MySQLSlowQueries
+        expr: rate(mysql_global_status_slow_queries[5m]) > 5
+        for: 5m
+        labels:
+          severity: warning
+          team: dba
+        annotations:
+          summary: "MySQL slow queries increasing"
+          description: "{{ $value | humanize }} slow queries per second."

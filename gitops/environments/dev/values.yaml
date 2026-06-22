@@ -1,0 +1,60 @@
+# GitOps-managed values for development.
+# Image tags auto-updated by Jenkins on every push to a non-main/staging/qa branch.
+
+task-tracker:
+  global:
+    environment: development
+    domain: rashmidevops.xyz
+
+  image:
+    registry: "897074277336.dkr.ecr.us-east-1.amazonaws.com"
+    pullPolicy: Always
+
+  backend:
+    replicaCount: 1
+    image:
+      repository: task-tracker-backend
+      tag: "latest"   # updated automatically by CI
+    resources:
+      requests:
+        cpu: "100m"
+        memory: "256Mi"
+      limits:
+        cpu: "500m"
+        memory: "512Mi"
+    hpa:
+      enabled: false
+      minReplicas: 1
+      maxReplicas: 2
+    env:
+      LOG_LEVEL: debug
+      RATE_LIMIT_MAX: "500"
+      DB_POOL_MAX: "5"
+
+  frontend:
+    replicaCount: 1
+    image:
+      repository: task-tracker-frontend
+      tag: "latest"   # updated automatically by CI
+    hpa:
+      enabled: false
+
+  ingress:
+    enabled: true
+    hosts:
+      frontend: dev-app.rashmidevops.xyz
+      backend: dev-api.rashmidevops.xyz
+    tls:
+      enabled: true
+      certificateArn: "arn:aws:acm:us-east-1:897074277336:certificate/091e16a8-8c97-4f48-a3a5-07cd7b5f594d"
+
+  serviceAccount:
+    create: true
+    irsaRoleArn: "REPLACE_WITH_IRSA_ROLE_ARN"
+
+  secrets:
+    dbHost: ""
+    dbUser: ""
+    dbPassword: ""
+    jwtSecret: ""
+    jwtRefreshSecret: ""

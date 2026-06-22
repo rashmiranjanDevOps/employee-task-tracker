@@ -1,0 +1,107 @@
+global:
+  resolve_timeout: 5m
+  slack_api_url: 'REPLACE_WITH_SLACK_WEBHOOK_URL'
+
+route:
+  group_by: ['alertname', 'cluster', 'severity']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  receiver: slack-default
+  routes:
+    - match:
+        severity: critical
+      receiver: slack-critical
+      repeat_interval: 1h
+      continue: true
+    - match:
+        severity: warning
+      receiver: slack-warnings
+      repeat_interval: 4h
+      continue: true
+    - match:
+        team: dba
+      receiver: slack-dba
+    - match:
+        team: sre
+      receiver: slack-sre
+
+receivers:
+  - name: slack-default
+    slack_configs:
+      - channel: '#alerts'
+        send_resolved: true
+        title: '{{ if eq .Status "firing" }}🔴{{ else }}✅{{ end }} {{ .GroupLabels.alertname }}'
+        text: |
+          *Alert:* {{ .GroupLabels.alertname }}
+          *Severity:* {{ .CommonLabels.severity }}
+          *Cluster:* {{ .CommonLabels.cluster }}
+          {{ range .Alerts }}
+          *Summary:* {{ .Annotations.summary }}
+          *Description:* {{ .Annotations.description }}
+          *Started:* {{ .StartsAt | since }}
+          {{ end }}
+        actions:
+          - type: button
+            text: 'View Runbook 📖'
+            url: '{{ (index .Alerts 0).Annotations.runbook }}'
+          - type: button
+            text: 'Grafana Dashboard 📊'
+            url: 'https://grafana.rashmidevops.xyz'
+          - type: button
+            text: 'ArgoCD 🚀'
+            url: 'https://argocd.rashmidevops.xyz'
+
+  - name: slack-critical
+    slack_configs:
+      - channel: '#critical-alerts'
+        send_resolved: true
+        title: '🚨 CRITICAL: {{ .GroupLabels.alertname }}'
+        text: |
+          *CRITICAL ALERT*
+          *Alert:* {{ .GroupLabels.alertname }}
+          *Environment:* production
+          {{ range .Alerts }}
+          *Summary:* {{ .Annotations.summary }}
+          *Description:* {{ .Annotations.description }}
+          {{ end }}
+
+  - name: slack-warnings
+    slack_configs:
+      - channel: '#warnings'
+        send_resolved: true
+        title: '⚠️ Warning: {{ .GroupLabels.alertname }}'
+        text: |
+          {{ range .Alerts }}
+          *Summary:* {{ .Annotations.summary }}
+          *Description:* {{ .Annotations.description }}
+          {{ end }}
+
+  - name: slack-dba
+    slack_configs:
+      - channel: '#database-alerts'
+        send_resolved: true
+        title: '🗄️ DB Alert: {{ .GroupLabels.alertname }}'
+        text: |
+          {{ range .Alerts }}
+          *Summary:* {{ .Annotations.summary }}
+          *Description:* {{ .Annotations.description }}
+          {{ end }}
+
+  - name: slack-sre
+    slack_configs:
+      - channel: '#sre-alerts'
+        send_resolved: true
+        title: '⚙️ SRE Alert: {{ .GroupLabels.alertname }}'
+        text: |
+          {{ range .Alerts }}
+          *Summary:* {{ .Annotations.summary }}
+          *Description:* {{ .Annotations.description }}
+          {{ end }}
+
+inhibit_rules:
+  - source_match:
+      severity: critical
+    target_match:
+      severity: warning
+    equal: ['alertname', 'cluster']

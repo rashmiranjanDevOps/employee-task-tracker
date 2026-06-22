@@ -1,0 +1,26 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: task-tracker
+
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - secret.yaml
+  - backend-deployment.yaml
+  - frontend-deployment.yaml
+  - services.yaml
+  - ingress.yaml
+  - hpa-pdb-rbac.yaml
+
+commonLabels:
+  app.kubernetes.io/name: task-tracker
+  app.kubernetes.io/managed-by: kustomize
+
+images:
+  - name: DOCKER_REGISTRY/task-tracker-backend
+    newName: DOCKER_REGISTRY/task-tracker-backend
+    newTag: latest
+  - name: DOCKER_REGISTRY/task-tracker-frontend
+    newName: DOCKER_REGISTRY/task-tracker-frontend
+    newTag: latest

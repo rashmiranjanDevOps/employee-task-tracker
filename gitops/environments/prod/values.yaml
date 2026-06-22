@@ -1,0 +1,64 @@
+# GitOps-managed values for production.
+# This file's image tags are auto-updated by the Jenkins pipeline.
+#
+# ⚠️  Before first deploy, replace every REPLACE_WITH_* value.
+# Run scripts/pre-deploy-check.sh to validate.
+
+task-tracker:
+  global:
+    environment: production
+    domain: rashmidevops.xyz
+
+  image:
+    registry: "897074277336.dkr.ecr.us-east-1.amazonaws.com"
+    pullPolicy: Always
+
+  backend:
+    replicaCount: 3
+    image:
+      repository: task-tracker-backend
+      tag: "latest"
+    resources:
+      requests:
+        cpu: "200m"
+        memory: "512Mi"
+      limits:
+        cpu: "1000m"
+        memory: "1Gi"
+    hpa:
+      enabled: true
+      minReplicas: 3
+      maxReplicas: 20
+
+  frontend:
+    replicaCount: 3
+    image:
+      repository: task-tracker-frontend
+      tag: "latest"
+    hpa:
+      enabled: true
+      minReplicas: 3
+      maxReplicas: 10
+
+  ingress:
+    enabled: true
+    hosts:
+      frontend: app.rashmidevops.xyz
+      backend: api.rashmidevops.xyz
+    tls:
+      enabled: true
+      certificateArn: "arn:aws:acm:us-east-1:897074277336:certificate/091e16a8-8c97-4f48-a3a5-07cd7b5f594d"
+    # S4: Fill in after terraform apply — output: module.waf.web_acl_arn
+    wafAclArn: "REPLACE_WITH_WAF_WEB_ACL_ARN"
+
+  # W4: Fill in after terraform apply — output: module.eks.irsa_role_arn
+  serviceAccount:
+    create: true
+    irsaRoleArn: "REPLACE_WITH_IRSA_ROLE_ARN"
+
+  secrets:
+    dbHost: ""
+    dbUser: ""
+    dbPassword: ""
+    jwtSecret: ""
+    jwtRefreshSecret: ""

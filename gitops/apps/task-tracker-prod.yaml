@@ -1,0 +1,46 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: task-tracker-prod
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: task-tracker
+    environment: production
+  annotations:
+    notifications.argoproj.io/subscribe.on-sync-succeeded.slack: deployments
+    notifications.argoproj.io/subscribe.on-sync-failed.slack: alerts
+    notifications.argoproj.io/subscribe.on-health-degraded.slack: alerts
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: task-tracker
+  source:
+    repoURL: https://github.com/rashmiranjandevops/employee-task-tracker-gitops.git
+    targetRevision: HEAD
+    path: environments/prod
+    helm:
+      valueFiles:
+        - values.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: task-tracker-prod
+  syncPolicy:
+    automated:
+      prune: false       # Manual prune in prod for safety
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - RespectIgnoreDifferences=true
+    retry:
+      limit: 3
+      backoff:
+        duration: 10s
+        maxDuration: 3m
+        factor: 2
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas   # HPA manages replicas
+  revisionHistoryLimit: 10

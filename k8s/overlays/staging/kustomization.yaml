@@ -1,0 +1,75 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: task-tracker-staging
+
+resources:
+  - ../../base
+
+patches:
+  - target:
+      kind: Deployment
+      name: task-tracker-backend
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 2
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/cpu
+        value: "150m"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/memory
+        value: "384Mi"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/cpu
+        value: "750m"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: "768Mi"
+
+  - target:
+      kind: Deployment
+      name: task-tracker-frontend
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 2
+
+  - target:
+      kind: HorizontalPodAutoscaler
+      name: task-tracker-backend-hpa
+    patch: |-
+      - op: replace
+        path: /spec/minReplicas
+        value: 2
+      - op: replace
+        path: /spec/maxReplicas
+        value: 6
+
+  - target:
+      kind: Ingress
+      name: task-tracker-ingress
+    patch: |-
+      - op: replace
+        path: /spec/rules/0/host
+        value: staging-app.rashmidevops.xyz
+      - op: replace
+        path: /spec/rules/1/host
+        value: staging-api.rashmidevops.xyz
+
+configMapGenerator:
+  - name: task-tracker-config
+    behavior: merge
+    literals:
+      - LOG_LEVEL=info
+      - RATE_LIMIT_MAX=250
+      - DB_NAME=tasktracker_staging
+      - ALLOWED_ORIGINS=https://staging-app.rashmidevops.xyz
+
+images:
+  - name: DOCKER_REGISTRY/task-tracker-backend
+    newName: 897074277336.dkr.ecr.us-east-1.amazonaws.com/task-tracker-backend
+    newTag: staging-latest
+  - name: DOCKER_REGISTRY/task-tracker-frontend
+    newName: 897074277336.dkr.ecr.us-east-1.amazonaws.com/task-tracker-frontend
+    newTag: staging-latest

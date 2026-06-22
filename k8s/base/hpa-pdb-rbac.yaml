@@ -1,0 +1,186 @@
+---
+# ─── HPA: Backend ─────────────────────────────────────────────────────────────
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: task-tracker-backend-hpa
+  namespace: task-tracker
+  labels:
+    app.kubernetes.io/name: task-tracker
+    app.kubernetes.io/component: backend
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: task-tracker-backend
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+        - type: Pods
+          value: 2
+          periodSeconds: 60
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 120
+
+---
+# ─── HPA: Frontend ────────────────────────────────────────────────────────────
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: task-tracker-frontend-hpa
+  namespace: task-tracker
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: task-tracker-frontend
+  minReplicas: 2
+  maxReplicas: 6
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+
+---
+# ─── PodDisruptionBudget: Backend ─────────────────────────────────────────────
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: task-tracker-backend-pdb
+  namespace: task-tracker
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: task-tracker-backend
+
+---
+# ─── PodDisruptionBudget: Frontend ────────────────────────────────────────────
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: task-tracker-frontend-pdb
+  namespace: task-tracker
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: task-tracker-frontend
+
+---
+# ─── NetworkPolicy ────────────────────────────────────────────────────────────
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: task-tracker-network-policy
+  namespace: task-tracker
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: task-tracker
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow ALB ingress controller traffic
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - port: 5000
+        - port: 8080
+    # Allow Prometheus scraping from monitoring namespace
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - port: 5000
+    # Allow inter-service communication within namespace
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: task-tracker
+  egress:
+    # Allow DNS
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+    # Allow HTTPS outbound (RDS, AWS APIs)
+    - ports:
+        - port: 443
+          protocol: TCP
+        - port: 3306
+          protocol: TCP
+
+---
+# ─── ServiceAccount ───────────────────────────────────────────────────────────
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: task-tracker-sa
+  namespace: task-tracker
+  labels:
+    app.kubernetes.io/name: task-tracker
+  annotations:
+    # AWS IRSA: link to IAM role for Secrets Manager access
+    eks.amazonaws.com/role-arn: "arn:aws:iam::ACCOUNT_ID:role/task-tracker-irsa-role"
+
+---
+# ─── RBAC: Role ───────────────────────────────────────────────────────────────
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: task-tracker-role
+  namespace: task-tracker
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps", "secrets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+
+---
+# ─── RBAC: RoleBinding ────────────────────────────────────────────────────────
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: task-tracker-rolebinding
+  namespace: task-tracker
+subjects:
+  - kind: ServiceAccount
+    name: task-tracker-sa
+    namespace: task-tracker
+roleRef:
+  kind: Role
+  apiVersion: rbac.authorization.k8s.io/v1
+  name: task-tracker-role

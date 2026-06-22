@@ -1,0 +1,56 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: task-tracker
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: task-tracker
+spec:
+  description: "Employee Task Tracker — All Environments"
+  sourceRepos:
+    - https://github.com/rashmiranjandevops/employee-task-tracker-gitops.git
+  destinations:
+    - namespace: task-tracker-dev
+      server: https://kubernetes.default.svc
+    - namespace: task-tracker-qa
+      server: https://kubernetes.default.svc
+    - namespace: task-tracker-staging
+      server: https://kubernetes.default.svc
+    - namespace: task-tracker-prod
+      server: https://kubernetes.default.svc
+    - namespace: argocd
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRole
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRoleBinding
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
+  roles:
+    - name: admin
+      description: Admin access to all environments
+      policies:
+        - p, proj:task-tracker:admin, applications, *, task-tracker/*, allow
+      groups:
+        - devops-team
+    - name: developer
+      description: Read-only access; sync allowed on dev/qa
+      policies:
+        - p, proj:task-tracker:developer, applications, get, task-tracker/*, allow
+        - p, proj:task-tracker:developer, applications, sync, task-tracker/task-tracker-dev, allow
+        - p, proj:task-tracker:developer, applications, sync, task-tracker/task-tracker-qa, allow
+      groups:
+        - engineering-team
+  syncWindows:
+    - kind: allow
+      schedule: "0 8 * * 1-5"   # Mon–Fri 8am
+      duration: 8h
+      applications:
+        - task-tracker-prod
+      namespaces:
+        - task-tracker-prod
+      manualSync: true

@@ -1,0 +1,17 @@
+# values-dev.yaml
+global:
+  environment: development
+backend:
+  replicaCount: 1
+  hpa:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 2
+  env:
+    LOG_LEVEL: debug
+    RATE_LIMIT_MAX: "500"
+    DB_POOL_MAX: "5"
+frontend:
+  replicaCount: 1
+  hpa:
+    enabled: false

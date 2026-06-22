@@ -1,0 +1,63 @@
+# GitOps-managed values for staging.
+# Image tags auto-updated by Jenkins on every push to the `staging` branch
+# or any `release/*` branch.
+
+task-tracker:
+  global:
+    environment: staging
+    domain: rashmidevops.xyz
+
+  image:
+    registry: "897074277336.dkr.ecr.us-east-1.amazonaws.com"
+    pullPolicy: Always
+
+  backend:
+    replicaCount: 2
+    image:
+      repository: task-tracker-backend
+      tag: "latest"
+    resources:
+      requests:
+        cpu: "150m"
+        memory: "384Mi"
+      limits:
+        cpu: "750m"
+        memory: "768Mi"
+    hpa:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 6
+    env:
+      LOG_LEVEL: info
+      RATE_LIMIT_MAX: "250"
+      DB_POOL_MAX: "15"
+
+  frontend:
+    replicaCount: 2
+    image:
+      repository: task-tracker-frontend
+      tag: "latest"
+    hpa:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 4
+
+  ingress:
+    enabled: true
+    hosts:
+      frontend: staging-app.rashmidevops.xyz
+      backend: staging-api.rashmidevops.xyz
+    tls:
+      enabled: true
+      certificateArn: "arn:aws:acm:us-east-1:897074277336:certificate/091e16a8-8c97-4f48-a3a5-07cd7b5f594d"
+
+  serviceAccount:
+    create: true
+    irsaRoleArn: "REPLACE_WITH_IRSA_ROLE_ARN"
+
+  secrets:
+    dbHost: ""
+    dbUser: ""
+    dbPassword: ""
+    jwtSecret: ""
+    jwtRefreshSecret: ""

@@ -1,0 +1,26 @@
+# values-staging.yaml — Staging overrides
+global:
+  environment: staging
+
+backend:
+  replicaCount: 2
+  resources:
+    requests:
+      cpu: "150m"
+      memory: "384Mi"
+    limits:
+      cpu: "750m"
+      memory: "768Mi"
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 6
+  env:
+    LOG_LEVEL: info
+    RATE_LIMIT_MAX: "250"
+    DB_POOL_MAX: "15"
+
+frontend:
+  replicaCount: 2
+  hpa:
+    enabled: false

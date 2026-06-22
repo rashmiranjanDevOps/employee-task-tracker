@@ -1,0 +1,92 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: task-tracker-dev
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: task-tracker
+    environment: development
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: task-tracker
+  source:
+    repoURL: https://github.com/rashmiranjandevops/employee-task-tracker-gitops.git
+    targetRevision: HEAD
+    path: environments/dev
+    helm:
+      valueFiles:
+        - values.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: task-tracker-dev
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+  revisionHistoryLimit: 5
+
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: task-tracker-qa
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: task-tracker
+    environment: qa
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: task-tracker
+  source:
+    repoURL: https://github.com/rashmiranjandevops/employee-task-tracker-gitops.git
+    targetRevision: HEAD
+    path: environments/qa
+    helm:
+      valueFiles:
+        - values.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: task-tracker-qa
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+  revisionHistoryLimit: 5
+
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: task-tracker-staging
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: task-tracker
+    environment: staging
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: task-tracker
+  source:
+    repoURL: https://github.com/rashmiranjandevops/employee-task-tracker-gitops.git
+    targetRevision: HEAD
+    path: environments/staging
+    helm:
+      valueFiles:
+        - values.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: task-tracker-staging
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+  revisionHistoryLimit: 5

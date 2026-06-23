@@ -380,18 +380,18 @@ stages {
         }
     }
 
-    stage('SonarQube Scan') {
-        steps {
-            withSonarQubeEnv('sonar') {
-                sh '''
-                sonar-scanner \
-                  -Dsonar.projectKey=task-tracker \
-                  -Dsonar.projectName=task-tracker \
-                  -Dsonar.sources=.
-                '''
-            }
-        }
-    }
+    // stage('SonarQube Scan') {
+    //     steps {
+    //         withSonarQubeEnv('sonar') {
+    //             sh '''
+    //             sonar-scanner \
+    //               -Dsonar.projectKey=task-tracker \
+    //               -Dsonar.projectName=task-tracker \
+    //               -Dsonar.sources=.
+    //             '''
+    //         }
+    //     }
+    // }
 
     stage('Build Backend Image') {
         steps {

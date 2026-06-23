@@ -3,49 +3,7 @@
 // Requires: Docker, kubectl, helm, argocd CLI, SonarQube Scanner, Trivy
 
 pipeline {
-  agent {
-    kubernetes {
-      yaml '''
-apiVersion: v1
-kind: Pod
-metadata:
-  labels:
-    jenkins-agent: task-tracker
-spec:
-  serviceAccountName: jenkins-sa
-  containers:
-  - name: node
-    image: node:20-alpine
-    command: [sleep]
-    args: [infinity]
-    resources:
-      requests:
-        cpu: "500m"
-        memory: "1Gi"
-      limits:
-        cpu: "1"
-        memory: "2Gi"
-  - name: docker
-    image: docker:24-dind
-    securityContext:
-      privileged: true
-    env:
-    - name: DOCKER_TLS_CERTDIR
-      value: ""
-    volumeMounts:
-    - name: docker-sock
-      mountPath: /var/run/docker.sock
-  - name: tools
-    image: alpine/k8s:1.28.3
-    command: [sleep]
-    args: [infinity]
-  volumes:
-  - name: docker-sock
-    hostPath:
-      path: /var/run/docker.sock
-'''
-    }
-  }
+  agent any
 
   options {
     timeout(time: 60, unit: 'MINUTES')

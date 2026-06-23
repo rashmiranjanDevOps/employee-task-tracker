@@ -152,9 +152,9 @@ metadata:
     app.kubernetes.io/name: task-tracker
   annotations:
     # AWS IRSA: link to IAM role for Secrets Manager access
-    eks.amazonaws.com/role-arn: "arn:aws:iam::ACCOUNT_ID:role/task-tracker-irsa-role"
+    eks.amazonaws.com/role-arn: "arn:aws:iam::897074277336:role/task-tracker-irsa-role"
 
----
+---    
 # ─── RBAC: Role ───────────────────────────────────────────────────────────────
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role

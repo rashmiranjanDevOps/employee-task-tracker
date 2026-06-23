@@ -53,4 +53,4 @@ acm_subject_alternative_names = [
 waf_rate_limit = 2000
 
 # Restrict EKS API access to known CIDRs — replace with your office/VPN CIDR(s)
-eks_public_access_cidrs = ["REPLACE_WITH_OFFICE_VPN_CIDR"]
+eks_public_access_cidrs = ["23.20.113.163/32"]

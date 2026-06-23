@@ -360,111 +360,103 @@
 // // }
 
 pipeline {
-agent any
+    agent any
 
-environment {
-    AWS_REGION = "us-east-1"
-    AWS_ACCOUNT_ID = "897074277336"
+    environment {
+        AWS_REGION = "us-east-1"
+        AWS_ACCOUNT_ID = "897074277336"
 
-    BACKEND_REPO = "task-tracker-backend"
-    FRONTEND_REPO = "task-tracker-frontend"
+        BACKEND_REPO = "task-tracker-backend"
+        FRONTEND_REPO = "task-tracker-frontend"
 
-    IMAGE_TAG = "${BUILD_NUMBER}"
-}
+        IMAGE_TAG = "${BUILD_NUMBER}"
+    }
 
-stages {
+    stages {
 
-    stage('Checkout') {
-        steps {
-            checkout scm
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Build Backend Image') {
+            steps {
+                sh '''
+                docker build \
+                  -t ${BACKEND_REPO}:${IMAGE_TAG} \
+                  ./backend
+                '''
+            }
+        }
+
+        stage('Build Frontend Image') {
+            steps {
+                sh '''
+                docker build \
+                  -t ${FRONTEND_REPO}:${IMAGE_TAG} \
+                  ./frontend
+                '''
+            }
+        }
+
+        stage('Login To ECR') {
+            steps {
+                withCredentials([
+                    [
+                        $class: 'AmazonWebServicesCredentialsBinding',
+                        credentialsId: 'aws-creds'
+                    ]
+                ]) {
+                    sh '''
+                    aws sts get-caller-identity
+
+                    aws ecr get-login-password --region ${AWS_REGION} | \
+                    docker login --username AWS --password-stdin \
+                    ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
+                    '''
+                }
+            }
+        }
+
+        stage('Tag Images') {
+            steps {
+                sh '''
+                docker tag ${BACKEND_REPO}:${IMAGE_TAG} \
+                ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${BACKEND_REPO}:${IMAGE_TAG}
+
+                docker tag ${FRONTEND_REPO}:${IMAGE_TAG} \
+                ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${FRONTEND_REPO}:${IMAGE_TAG}
+                '''
+            }
+        }
+
+        stage('Push Backend Image') {
+            steps {
+                sh '''
+                docker push \
+                ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${BACKEND_REPO}:${IMAGE_TAG}
+                '''
+            }
+        }
+
+        stage('Push Frontend Image') {
+            steps {
+                sh '''
+                docker push \
+                ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${FRONTEND_REPO}:${IMAGE_TAG}
+                '''
+            }
         }
     }
 
-    // stage('SonarQube Scan') {
-    //     steps {
-    //         withSonarQubeEnv('sonar') {
-    //             sh '''
-    //             sonar-scanner \
-    //               -Dsonar.projectKey=task-tracker \
-    //               -Dsonar.projectName=task-tracker \
-    //               -Dsonar.sources=.
-    //             '''
-    //         }
-    //     }
-    // }
+    post {
+        success {
+            echo 'Build completed successfully'
+        }
 
-    stage('Build Backend Image') {
-        steps {
-            sh '''
-            docker build \
-              -t ${BACKEND_REPO}:${IMAGE_TAG} \
-              ./backend
-            '''
+        failure {
+            echo 'Build failed'
         }
     }
-
-    stage('Build Frontend Image') {
-        steps {
-            sh '''
-            docker build \
-              -t ${FRONTEND_REPO}:${IMAGE_TAG} \
-              ./frontend
-            '''
-        }
-    }
-
-    stage('Login To ECR') {
-        steps {
-            sh '''
-            aws ecr get-login-password --region ${AWS_REGION} | \
-            docker login \
-            --username AWS \
-            --password-stdin \
-            ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
-            '''
-        }
-    }
-
-    stage('Tag Images') {
-        steps {
-            sh '''
-            docker tag ${BACKEND_REPO}:${IMAGE_TAG} \
-            ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${BACKEND_REPO}:${IMAGE_TAG}
-
-            docker tag ${FRONTEND_REPO}:${IMAGE_TAG} \
-            ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${FRONTEND_REPO}:${IMAGE_TAG}
-            '''
-        }
-    }
-
-    stage('Push Backend Image') {
-        steps {
-            sh '''
-            docker push \
-            ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${BACKEND_REPO}:${IMAGE_TAG}
-            '''
-        }
-    }
-
-    stage('Push Frontend Image') {
-        steps {
-            sh '''
-            docker push \
-            ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${FRONTEND_REPO}:${IMAGE_TAG}
-            '''
-        }
-    }
-}
-
-post {
-    success {
-        echo 'Build completed successfully'
-    }
-
-    failure {
-        echo 'Build failed'
-    }
-}
-
-
 }

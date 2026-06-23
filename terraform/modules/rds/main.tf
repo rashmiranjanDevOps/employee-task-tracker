@@ -152,7 +152,7 @@ resource "aws_iam_role_policy_attachment" "rds_monitoring" {
 resource "aws_secretsmanager_secret" "db_credentials" {
   name                    = "task-tracker/${var.environment}/db-credentials"
   description             = "RDS MySQL credentials for Task Tracker ${var.environment}"
-  recovery_window_in_days = 7
+  recovery_window_in_days = 0
   kms_key_id              = aws_kms_key.rds.arn
 }
 

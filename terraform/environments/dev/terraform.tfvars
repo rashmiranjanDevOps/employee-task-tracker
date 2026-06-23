@@ -27,7 +27,7 @@ rds_max_allocated_storage   = 50
 rds_multi_az                = false
 rds_database_name           = "tasktracker_dev"
 rds_master_username         = "tasktracker_admin"
-rds_backup_retention_period = 1
+rds_backup_retention_period = 0
 rds_deletion_protection     = false
 
 domain_name = "rashmidevops.xyz"

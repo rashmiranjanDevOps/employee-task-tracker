@@ -21,10 +21,10 @@ pipeline {
     SONAR_HOST_URL  = credentials('sonarqube-url')
     GITOPS_REPO     = 'https://github.com/rashmiranjandevops/employee-task-tracker-gitops.git'
     GITOPS_CREDS    = credentials('gitops-repo-credentials')
-    ARGOCD_SERVER   = credentials('argocd-server-url')
-    ARGOCD_TOKEN    = credentials('argocd-auth-token')
-    SLACK_CHANNEL   = '#deployments'
-    SLACK_CREDS     = credentials('slack-webhook-url')
+    // ARGOCD_SERVER   = credentials('argocd-server-url')
+    // ARGOCD_TOKEN    = credentials('argocd-auth-token')
+    // SLACK_CHANNEL   = '#deployments'
+    // SLACK_CREDS     = credentials('slack-webhook-url')
     IMAGE_TAG       = "${env.GIT_COMMIT?.take(8) ?: 'latest'}"
     BRANCH_NAME_SAFE = "${env.BRANCH_NAME?.replaceAll('/', '-') ?: 'unknown'}"
   }
@@ -292,69 +292,69 @@ Build: ${env.BUILD_NUMBER}"
       }
     }
 
-    // ─── Stage 12: ArgoCD Sync ────────────────────────────────────────────
-    stage('ArgoCD Sync') {
-      steps {
-        container('tools') {
-          sh """
-            # Install ArgoCD CLI
-            curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
-            chmod +x /usr/local/bin/argocd
+    // // ─── Stage 12: ArgoCD Sync ────────────────────────────────────────────
+    // stage('ArgoCD Sync') {
+    //   steps {
+    //     container('tools') {
+    //       sh """
+    //         # Install ArgoCD CLI
+    //         curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
+    //         chmod +x /usr/local/bin/argocd
 
-            argocd login ${ARGOCD_SERVER} --auth-token ${ARGOCD_TOKEN} --insecure
+    //         argocd login ${ARGOCD_SERVER} --auth-token ${ARGOCD_TOKEN} --insecure
 
-            argocd app sync task-tracker-${env.DEPLOY_ENV} --timeout 180
+    //         argocd app sync task-tracker-${env.DEPLOY_ENV} --timeout 180
 
-            argocd app wait task-tracker-${env.DEPLOY_ENV} \
-              --health \
-              --sync \
-              --timeout 300
-          """
-        }
-      }
-    }
+    //         argocd app wait task-tracker-${env.DEPLOY_ENV} \
+    //           --health \
+    //           --sync \
+    //           --timeout 300
+    //       """
+    //     }
+    //   }
+    // }
   }
 
-  post {
-    success {
-      script {
-        slackNotify('SUCCESS', "✅ *${APP_NAME}* deployed to *${env.DEPLOY_ENV}*\n>Build `#${env.BUILD_NUMBER}` | Commit `${IMAGE_TAG}` | Author: ${env.GIT_AUTHOR}")
-      }
-    }
-    failure {
-      script {
-        slackNotify('FAILURE', "❌ *${APP_NAME}* pipeline FAILED on *${env.DEPLOY_ENV}*\n>Build `#${env.BUILD_NUMBER}` | Stage: `${env.STAGE_NAME}` | Commit `${IMAGE_TAG}`\n><${env.BUILD_URL}|View Build>")
-      }
-    }
-    always {
-      container('docker') {
-        sh """
-          docker rmi ${DOCKER_REGISTRY}/${APP_NAME}-backend:${IMAGE_TAG} || true
-          docker rmi ${DOCKER_REGISTRY}/${APP_NAME}-frontend:${IMAGE_TAG} || true
-        """
-      }
-      cleanWs()
-    }
-  }
+  // post {
+  //   success {
+  //     script {
+  //       slackNotify('SUCCESS', "✅ *${APP_NAME}* deployed to *${env.DEPLOY_ENV}*\n>Build `#${env.BUILD_NUMBER}` | Commit `${IMAGE_TAG}` | Author: ${env.GIT_AUTHOR}")
+  //     }
+  //   }
+  //   failure {
+  //     script {
+  //       slackNotify('FAILURE', "❌ *${APP_NAME}* pipeline FAILED on *${env.DEPLOY_ENV}*\n>Build `#${env.BUILD_NUMBER}` | Stage: `${env.STAGE_NAME}` | Commit `${IMAGE_TAG}`\n><${env.BUILD_URL}|View Build>")
+  //     }
+  //   }
+  //   always {
+  //     container('docker') {
+  //       sh """
+  //         docker rmi ${DOCKER_REGISTRY}/${APP_NAME}-backend:${IMAGE_TAG} || true
+  //         docker rmi ${DOCKER_REGISTRY}/${APP_NAME}-frontend:${IMAGE_TAG} || true
+  //       """
+  //     }
+  //     cleanWs()
+  //   }
+  // }
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-def getDeployEnv(String branch) {
-  switch (branch) {
-    case 'main':           return 'prod'
-    case 'staging':        return 'staging'
-    case ~/^release\/.+/: return 'staging'
-    case 'qa':             return 'qa'
-    default:               return 'dev'
-  }
-}
+// def getDeployEnv(String branch) {
+//   switch (branch) {
+//     case 'main':           return 'prod'
+//     case 'staging':        return 'staging'
+//     case ~/^release\/.+/: return 'staging'
+//     case 'qa':             return 'qa'
+//     default:               return 'dev'
+//   }
+// }
 
-def slackNotify(String status, String message) {
-  def color = status == 'SUCCESS' ? 'good' : 'danger'
-  slackSend(
-    channel: env.SLACK_CHANNEL,
-    color: color,
-    message: message,
-    tokenCredentialId: 'slack-webhook-url'
-  )
-}
+// def slackNotify(String status, String message) {
+//   def color = status == 'SUCCESS' ? 'good' : 'danger'
+//   slackSend(
+//     channel: env.SLACK_CHANNEL,
+//     color: color,
+//     message: message,
+//     tokenCredentialId: 'slack-webhook-url'
+//   )
+// }
